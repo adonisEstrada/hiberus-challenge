@@ -1,0 +1,413 @@
+openapi: 3.0.3
+info:
+  title: Payment Initiation API - BIAN Aligned
+  description: |
+    REST API for Payment Order management aligned with BIAN Service Domain Payment Initiation.
+    This service migrates legacy SOAP operations to modern REST endpoints.
+  version: 1.0.0
+  contact:
+    name: Banking Entity - North Region
+    email: api-support@bank.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.bank.com/v1
+    description: Production server
+
+tags:
+  - name: Payment Orders
+    description: Operations for payment order initiation and management
+
+paths:
+  /payment-initiation/payment-orders:
+    post:
+      tags:
+        - Payment Orders
+      summary: Initiate a new payment order
+      description: Creates and initiates a new payment order in the system
+      operationId: initiatePaymentOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiatePaymentOrderRequest'
+            examples:
+              domesticTransfer:
+                summary: Domestic bank transfer
+                value:
+                  debtorAccount:
+                    identification: ES9121000418450200051332
+                    name: John Doe
+                  creditorAccount:
+                    identification: ES7921000813610123456789
+                    name: Jane Smith
+                  amount:
+                    value: 1500.50
+                    currency: EUR
+                  executionDate: 2025-11-05
+                  remittanceInformation: Invoice 2025-001 Payment
+      responses:
+        '201':
+          description: Payment order created successfully
+          headers:
+            Location:
+              description: URI of the created payment order
+              schema:
+                type: string
+                example: /payment-initiation/payment-orders/PO-2025110300001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /payment-initiation/payment-orders/{paymentOrderId}:
+    get:
+      tags:
+        - Payment Orders
+      summary: Retrieve a payment order
+      description: Retrieves complete details of a specific payment order
+      operationId: retrievePaymentOrder
+      parameters:
+        - $ref: '#/components/parameters/PaymentOrderIdParam'
+      responses:
+        '200':
+          description: Payment order retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrderResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /payment-initiation/payment-orders/{paymentOrderId}/status:
+    get:
+      tags:
+        - Payment Orders
+      summary: Retrieve payment order status
+      description: Retrieves only the current status of a specific payment order
+      operationId: retrievePaymentOrderStatus
+      parameters:
+        - $ref: '#/components/parameters/PaymentOrderIdParam'
+      responses:
+        '200':
+          description: Payment order status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrderStatusResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    PaymentOrderIdParam:
+      name: paymentOrderId
+      in: path
+      required: true
+      description: Unique identifier of the payment order
+      schema:
+        type: string
+        pattern: '^PO-[0-9]{13}$'
+        example: PO-2025110300001
+
+  schemas:
+    InitiatePaymentOrderRequest:
+      type: object
+      required:
+        - debtorAccount
+        - creditorAccount
+        - amount
+        - executionDate
+      properties:
+        debtorAccount:
+          $ref: '#/components/schemas/AccountInfo'
+        creditorAccount:
+          $ref: '#/components/schemas/AccountInfo'
+        amount:
+          $ref: '#/components/schemas/MonetaryAmount'
+        executionDate:
+          type: string
+          format: date
+          description: Date when the payment should be executed
+          example: '2025-11-05'
+        remittanceInformation:
+          type: string
+          maxLength: 140
+          description: Payment description or reference
+          example: Invoice payment INV-2025-001
+        endToEndIdentification:
+          type: string
+          maxLength: 35
+          description: Unique end-to-end transaction identifier
+          example: E2E-20251103-001
+        priority:
+          type: string
+          enum: [NORMAL, HIGH, URGENT]
+          default: NORMAL
+          description: Payment priority level
+
+    PaymentOrderResponse:
+      type: object
+      required:
+        - paymentOrderId
+        - status
+        - debtorAccount
+        - creditorAccount
+        - amount
+        - executionDate
+        - createdAt
+      properties:
+        paymentOrderId:
+          type: string
+          description: Unique identifier assigned to the payment order
+          example: PO-2025110300001
+        status:
+          $ref: '#/components/schemas/PaymentOrderStatus'
+        debtorAccount:
+          $ref: '#/components/schemas/AccountInfo'
+        creditorAccount:
+          $ref: '#/components/schemas/AccountInfo'
+        amount:
+          $ref: '#/components/schemas/MonetaryAmount'
+        executionDate:
+          type: string
+          format: date
+          example: '2025-11-05'
+        remittanceInformation:
+          type: string
+          example: Invoice payment INV-2025-001
+        endToEndIdentification:
+          type: string
+          example: E2E-20251103-001
+        priority:
+          type: string
+          enum: [NORMAL, HIGH, URGENT]
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the order was created
+          example: '2025-11-03T10:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of last update
+          example: '2025-11-03T10:35:00Z'
+        statusReason:
+          type: string
+          description: Reason for current status (especially for failures)
+          example: Insufficient funds in debtor account
+
+    PaymentOrderStatusResponse:
+      type: object
+      required:
+        - paymentOrderId
+        - status
+        - updatedAt
+      properties:
+        paymentOrderId:
+          type: string
+          example: PO-2025110300001
+        status:
+          $ref: '#/components/schemas/PaymentOrderStatus'
+        statusReason:
+          type: string
+          example: Payment processed successfully
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2025-11-03T10:35:00Z'
+
+    AccountInfo:
+      type: object
+      required:
+        - identification
+        - name
+      properties:
+        identification:
+          type: string
+          description: Account number (IBAN or local format)
+          example: ES9121000418450200051332
+          pattern: '^[A-Z]{2}[0-9]{2}[A-Z0-9]+$'
+        name:
+          type: string
+          description: Account holder name
+          example: John Doe
+          maxLength: 140
+        bankIdentifier:
+          type: string
+          description: Bank identification code (BIC/SWIFT)
+          example: BANKESMMXXX
+          pattern: '^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$'
+
+    MonetaryAmount:
+      type: object
+      required:
+        - value
+        - currency
+      properties:
+        value:
+          type: number
+          format: double
+          description: Numeric amount value
+          example: 1500.50
+          minimum: 0.01
+        currency:
+          type: string
+          description: ISO 4217 currency code
+          example: EUR
+          pattern: '^[A-Z]{3}$'
+
+    PaymentOrderStatus:
+      type: string
+      enum:
+        - PENDING
+        - PROCESSING
+        - COMPLETED
+        - FAILED
+        - REJECTED
+        - CANCELLED
+      description: |
+        Current status of the payment order:
+        * PENDING - Order received, awaiting processing
+        * PROCESSING - Order is being executed
+        * COMPLETED - Order successfully completed
+        * FAILED - Order execution failed
+        * REJECTED - Order rejected by system or bank
+        * CANCELLED - Order cancelled by user
+
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference identifying the problem type
+          example: https://api.bank.com/problems/validation-error
+        title:
+          type: string
+          description: Short, human-readable summary of the problem
+          example: Validation Error
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+          example: Invalid IBAN format for debtor account
+        instance:
+          type: string
+          format: uri
+          description: URI reference identifying the specific occurrence
+          example: /payment-initiation/payment-orders
+        timestamp:
+          type: string
+          format: date-time
+          example: '2025-11-03T10:30:00Z'
+        errors:
+          type: array
+          description: List of validation errors
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: debtorAccount.identification
+              message:
+                type: string
+                example: must match IBAN format
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input parameters
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://api.bank.com/problems/bad-request
+            title: Bad Request
+            status: 400
+            detail: Request validation failed
+            timestamp: '2025-11-03T10:30:00Z'
+
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://api.bank.com/problems/unauthorized
+            title: Unauthorized
+            status: 401
+            detail: Authentication credentials missing or invalid
+
+    NotFound:
+      description: Not found - Resource does not exist
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://api.bank.com/problems/not-found
+            title: Not Found
+            status: 404
+            detail: Payment order with ID PO-2025110300001 not found
+
+    UnprocessableEntity:
+      description: Unprocessable entity - Business validation failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://api.bank.com/problems/business-validation
+            title: Business Validation Error
+            status: 422
+            detail: Insufficient funds in debtor account
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://api.bank.com/problems/internal-error
+            title: Internal Server Error
+            status: 500
+            detail: An unexpected error occurred processing your request
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for API authentication
+
+security:
+  - bearerAuth: []

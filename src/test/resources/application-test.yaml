@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: payment-initiation-service-test
+
+  r2dbc:
+    url: r2dbc:tc:postgresql:///payment_db?TC_IMAGE_TAG=15-alpine
+    username: test
+    password: test
+
+  sql:
+    init:
+      mode: always
+
+logging:
+  level:
+    com.hiberus.challenge: DEBUG
+    org.springframework.r2dbc: DEBUG
+    org.testcontainers: INFO
+
+server:
+  port: 0
