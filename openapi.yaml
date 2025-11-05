@@ -1,0 +1,145 @@
+openapi: 3.0.3
+info:
+  title: Payment Initiation - Payment Order API
+  description: API for Payment Initiation aligned with BIAN Service Domain Payment Initiation / PaymentOrder BQ
+  version: 1.0.0
+  contact:
+    name: Hiberus
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /payment-initiation/payment-orders:
+    post:
+      summary: Initiate a Payment Order
+      description: Initiates a new payment order in the system.
+      operationId: initiatePaymentOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiatePaymentOrderRequest'
+      responses:
+        '200':
+          description: Payment order initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrderResponse'
+        '400':
+          description: Bad request
+  /payment-initiation/payment-orders/{paymentOrderId}:
+    get:
+      summary: Retrieve Payment Order
+      description: Retrieves the details of a specific payment order.
+      operationId: retrievePaymentOrder
+      parameters:
+        - name: paymentOrderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment order retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrderResponse'
+        '404':
+          description: Payment order not found
+  /payment-initiation/payment-orders/{paymentOrderId}/status:
+    get:
+      summary: Retrieve Payment Order Status
+      description: Retrieves the status of a specific payment order.
+      operationId: retrievePaymentOrderStatus
+      parameters:
+        - name: paymentOrderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment order status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrderStatusResponse'
+        '404':
+          description: Payment order not found
+components:
+  schemas:
+    InitiatePaymentOrderRequest:
+      type: object
+      properties:
+        externalReference:
+          type: string
+        debtorAccount:
+          $ref: '#/components/schemas/Account'
+        creditorAccount:
+          $ref: '#/components/schemas/Account'
+        instructedAmount:
+          $ref: '#/components/schemas/Amount'
+        remittanceInformation:
+          type: string
+        requestedExecutionDate:
+          type: string
+          format: date
+      required:
+        - externalReference
+        - debtorAccount
+        - creditorAccount
+        - instructedAmount
+        - requestedExecutionDate
+    PaymentOrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        externalReference:
+          type: string
+        debtorAccount:
+          $ref: '#/components/schemas/Account'
+        creditorAccount:
+          $ref: '#/components/schemas/Account'
+        instructedAmount:
+          $ref: '#/components/schemas/Amount'
+        remittanceInformation:
+          type: string
+        requestedExecutionDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PENDING, EXECUTED, FAILED]
+    PaymentOrderStatusResponse:
+      type: object
+      properties:
+        paymentOrderId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, EXECUTED, FAILED]
+        lastUpdate:
+          type: string
+          format: date-time
+    Account:
+      type: object
+      properties:
+        iban:
+          type: string
+      required:
+        - iban
+    Amount:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+      required:
+        - amount
+        - currency
